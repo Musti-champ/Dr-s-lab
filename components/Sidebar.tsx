@@ -1,5 +1,5 @@
 import React from 'react';
-import { NewChatIcon, SettingsIcon, SunIcon, MoonIcon, SpeakerWaveIcon, SpeakerXMarkIcon, ConversationIcon } from './icons';
+import { NewChatIcon, SettingsIcon, SunIcon, MoonIcon, SpeakerWaveIcon, SpeakerXMarkIcon, ConversationIcon, DownloadIcon } from './icons';
 
 interface SidebarProps {
   onNewChat: () => void;
@@ -11,11 +11,12 @@ interface SidebarProps {
   toggleResponseMode: () => void;
   isConversationMode: boolean;
   toggleConversationMode: () => void;
+  onDownloadChat: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
     onNewChat, model, onModelChange, theme, toggleTheme, responseMode, 
-    toggleResponseMode, isConversationMode, toggleConversationMode 
+    toggleResponseMode, isConversationMode, toggleConversationMode, onDownloadChat
 }) => {
   return (
     <aside className="hidden md:flex w-64 h-screen bg-slate-50 dark:bg-slate-900 flex-col justify-between p-4 border-r border-gray-200 dark:border-gray-700">
@@ -64,6 +65,15 @@ const Sidebar: React.FC<SidebarProps> = ({
         >
           {responseMode === 'text' ? <SpeakerXMarkIcon className="w-5 h-5 mr-3" /> : <SpeakerWaveIcon className="w-5 h-5 mr-3" />}
           <span className="font-medium">Voice Output</span>
+        </button>
+        <button
+          onClick={onDownloadChat}
+          className="w-full flex items-center p-3 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-700 dark:text-gray-300"
+          aria-label="Download chat history"
+          title="Download chat history"
+        >
+          <DownloadIcon className="w-5 h-5 mr-3" />
+          <span className="font-medium">Download Chat</span>
         </button>
         <button
           onClick={toggleTheme}
