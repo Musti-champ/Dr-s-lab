@@ -7,9 +7,10 @@ interface ChatMessageProps {
   message: string;
   isUser: boolean;
   isLoading?: boolean;
+  imageUrl?: string;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, isLoading = false }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, isLoading = false, imageUrl }) => {
   const containerStyles = isUser 
     ? 'bg-white dark:bg-gray-900' 
     : 'bg-slate-50 dark:bg-gray-800';
@@ -36,9 +37,20 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, isLoading = 
         </div>
         <div className={`flex-1 pt-0.5 prose sm:prose-base max-w-none text-gray-800 dark:prose-invert prose-headings:font-semibold prose-a:text-indigo-600 hover:prose-a:text-indigo-500 prose-code:bg-slate-100 dark:prose-code:bg-slate-800 prose-code:p-1 prose-code:rounded max-h-[40vh] overflow-y-auto`}>
            {isLoading ? <LoadingDots /> : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {message}
-            </ReactMarkdown>
+            <>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {message}
+              </ReactMarkdown>
+              {imageUrl && (
+                <div className="mt-4">
+                  <img 
+                    src={imageUrl} 
+                    alt="Generated content" 
+                    className="rounded-lg border border-gray-200 dark:border-gray-700 max-w-full h-auto shadow-md"
+                  />
+                </div>
+              )}
+            </>
            )}
         </div>
       </div>

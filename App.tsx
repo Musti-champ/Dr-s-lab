@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import TopBanner from './components/TopBanner';
 import MainContent from './components/MainContent';
@@ -7,12 +7,16 @@ import { GoogleGenAI } from "@google/genai";
 export interface Message {
   text: string;
   isUser: boolean;
+  imageUrl?: string;
 }
 
 const App: React.FC = () => {
   const [isBannerVisible, setIsBannerVisible] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [model, setModel] = useState<string>('gemini-2.5-flash');
+  const [isConversationMode, setIsConversationMode] = useState(false);
+  const [autoListenTrigger, setAutoListenTrigger] = useState(0);
+
   const [theme, setTheme] = useState(() => {
     try {
       const savedTheme = localStorage.getItem('theme');
@@ -72,32 +76,48 @@ const App: React.FC = () => {
     }
   }, [responseMode]);
 
+  const toggleConversationMode = useCallback(() => {
+    setIsConversationMode(prevMode => {
+      const newModeState = !prevMode;
+      if (newModeState) {
+          // Conversation mode requires voice output
+          setResponseMode('voice');
+      } else {
+          // Stop any ongoing speech synthesis when exiting the mode
+          window.speechSynthesis?.cancel();
+      }
+      return newModeState;
+    });
+  }, []);
 
-  const handleCloseBanner = () => {
+  const handleCloseBanner = useCallback(() => {
     setIsBannerVisible(false);
-  };
+  }, []);
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     setMessages([]);
     localStorage.removeItem('chatHistory');
     window.speechSynthesis?.cancel();
-  };
+    setIsConversationMode(false);
+  }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
+  }, []);
   
-  const toggleResponseMode = () => {
+  const toggleResponseMode = useCallback(() => {
     setResponseMode(prevMode => {
         const newMode = prevMode === 'text' ? 'voice' : 'text';
         if (newMode === 'text') {
           window.speechSynthesis?.cancel();
+          // Disable conversation mode if voice output is turned off
+          setIsConversationMode(false);
         }
         return newMode;
     });
-  };
+  }, []);
 
-  const handleSend = async (prompt: string) => {
+  const handleSend = useCallback(async (prompt: string) => {
     if (!prompt.trim()) return;
 
     window.speechSynthesis?.cancel();
@@ -107,17 +127,49 @@ const App: React.FC = () => {
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: prompt,
-      });
-      
-      const aiMessage: Message = { text: response.text, isUser: false };
-      setMessages(prev => [...prev, aiMessage]);
 
-      if (responseMode === 'voice') {
-        const utterance = new SpeechSynthesisUtterance(response.text);
-        window.speechSynthesis.speak(utterance);
+      if (prompt.startsWith('[Using Tool: Create Images]')) {
+        const imagePrompt = prompt.substring('[Using Tool: Create Images]'.length).trim();
+        
+        const response = await ai.models.generateImages({
+            model: 'imagen-4.0-generate-001',
+            prompt: imagePrompt,
+            config: {
+              numberOfImages: 1,
+              outputMimeType: 'image/jpeg',
+            },
+        });
+
+        if (response.generatedImages && response.generatedImages.length > 0) {
+            const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
+            const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+            const aiMessage: Message = { 
+                text: `Here is the image I generated for you based on the prompt: "${imagePrompt}"`, 
+                isUser: false, 
+                imageUrl: imageUrl 
+            };
+            setMessages(prev => [...prev, aiMessage]);
+        } else {
+            throw new Error("Image generation failed, no images returned.");
+        }
+      } else {
+        const response = await ai.models.generateContent({
+          model: model,
+          contents: prompt,
+        });
+        
+        const aiMessage: Message = { text: response.text, isUser: false };
+        setMessages(prev => [...prev, aiMessage]);
+
+        if (responseMode === 'voice') {
+          const utterance = new SpeechSynthesisUtterance(response.text);
+          utterance.onend = () => {
+            if(isConversationMode){
+                setAutoListenTrigger(c => c + 1);
+            }
+          };
+          window.speechSynthesis.speak(utterance);
+        }
       }
     } catch (error) {
       console.error("Error generating content:", error);
@@ -126,7 +178,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [model, responseMode, isConversationMode]);
 
   return (
     <div className="flex h-screen w-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans antialiased">
@@ -138,10 +190,12 @@ const App: React.FC = () => {
         toggleTheme={toggleTheme}
         responseMode={responseMode}
         toggleResponseMode={toggleResponseMode}
+        isConversationMode={isConversationMode}
+        toggleConversationMode={toggleConversationMode}
       />
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {isBannerVisible && <TopBanner onClose={handleCloseBanner} />}
-        <MainContent messages={messages} isLoading={isLoading} onSend={handleSend} />
+        <MainContent messages={messages} isLoading={isLoading} onSend={handleSend} isConversationMode={isConversationMode} autoListenTrigger={autoListenTrigger} />
       </main>
     </div>
   );

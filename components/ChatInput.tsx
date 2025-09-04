@@ -7,6 +7,8 @@ import {
 interface ChatInputProps {
     onSend: (prompt: string) => void;
     disabled?: boolean;
+    isConversationMode?: boolean;
+    autoListenTrigger?: number;
 }
 
 const tools = [
@@ -47,40 +49,129 @@ const tools = [
   },
 ];
 
+const CONVERSATION_MODE_SEND_DELAY = 1200; // ms
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
+const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false, isConversationMode = false, autoListenTrigger = 0 }) => {
   const [prompt, setPrompt] = useState('');
   const [isToolMenuOpen, setIsToolMenuOpen] = useState(false);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
-  const [isMicSupported, setIsMicSupported] = useState(false);
+  const [isProcessingSpeech, setIsProcessingSpeech] = useState(false);
+  const [isMicSupported, setIsMicSupported] = useState(true);
+  const [micError, setMicError] = useState<string | null>(null);
 
+  const finalTranscriptRef = useRef('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const toolMenuRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null); // Using 'any' for SpeechRecognition to avoid TS DOM lib conflicts
+  const recognitionRef = useRef<any>(null);
+  const inactivityTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
-      setIsMicSupported(true);
       const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.continuous = true;
+      recognition.interimResults = true;
       recognition.lang = 'en-US';
 
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
+      recognition.onstart = () => {
+        setIsListening(true);
+        setIsProcessingSpeech(false);
+        setMicError(null);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        if (inactivityTimeoutRef.current) {
+            clearTimeout(inactivityTimeoutRef.current);
+            inactivityTimeoutRef.current = null;
+        }
+      };
+
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error', event.error);
+        let errorMessage = 'An unknown microphone error occurred. Please try again.';
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          errorMessage = 'Microphone access was denied. Please allow microphone permissions in your browser settings and refresh the page.';
+        } else if (event.error === 'no-speech') {
+          errorMessage = 'No speech was detected. Please make sure your microphone is working.';
+        } else if (event.error === 'network') {
+            errorMessage = 'A network error occurred with speech recognition. Please check your connection.';
+        } else if (event.error === 'audio-capture') {
+            errorMessage = 'Could not capture audio. Please check your microphone hardware.';
+        }
+        setMicError(errorMessage);
         setIsListening(false);
+        setIsProcessingSpeech(false);
       };
+
       recognition.onresult = (event: any) => {
-        const transcript = event.results[event.results.length - 1][0].transcript;
-        setPrompt(prev => prev ? `${prev} ${transcript}` : transcript);
+        if (inactivityTimeoutRef.current) {
+            clearTimeout(inactivityTimeoutRef.current);
+        }
+
+        let interimTranscript = '';
+        let lastFinalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            lastFinalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        
+        const trimmedFinal = lastFinalTranscript.trim();
+        if (trimmedFinal) {
+            finalTranscriptRef.current += trimmedFinal + ' ';
+        }
+        const currentText = (finalTranscriptRef.current + interimTranscript).trim();
+        setPrompt(currentText);
+
+        if (isConversationMode) {
+          inactivityTimeoutRef.current = window.setTimeout(() => {
+            const transcriptToSend = finalTranscriptRef.current.trim();
+            if (transcriptToSend) {
+                setIsProcessingSpeech(true);
+                recognition.stop();
+                finalTranscriptRef.current = ''; 
+                setPrompt('');
+                onSend(transcriptToSend);
+            }
+          }, CONVERSATION_MODE_SEND_DELAY);
+        }
       };
+      
       recognitionRef.current = recognition;
+    } else {
+        setIsMicSupported(false);
+        setMicError("Speech recognition is not supported by your browser.");
     }
-  }, []);
+
+    return () => {
+        if (inactivityTimeoutRef.current) {
+            clearTimeout(inactivityTimeoutRef.current);
+        }
+        recognitionRef.current?.abort();
+    };
+  }, [isConversationMode, onSend]);
+
+  useEffect(() => {
+    if (isConversationMode) {
+        finalTranscriptRef.current = '';
+        recognitionRef.current?.start();
+    } else {
+      recognitionRef.current?.stop();
+    }
+  }, [isConversationMode]);
+
+  useEffect(() => {
+      if (isConversationMode && autoListenTrigger > 0) {
+          finalTranscriptRef.current = '';
+          recognitionRef.current?.start();
+      }
+  }, [autoListenTrigger, isConversationMode]);
+
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -104,10 +195,12 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
   }, [toolMenuRef]);
   
   const handleMicClick = () => {
-    if (!recognitionRef.current) return;
+    if (!recognitionRef.current || isConversationMode || !isMicSupported) return;
     if (isListening) {
       recognitionRef.current.stop();
     } else {
+      finalTranscriptRef.current = '';
+      setPrompt('');
       recognitionRef.current.start();
     }
   };
@@ -138,7 +231,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
   };
 
   return (
-    <div className={`relative w-full bg-white dark:bg-gray-800 rounded-2xl border ${disabled ? 'border-gray-200 dark:border-gray-700' : 'border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-indigo-500 dark:focus-within:ring-indigo-400 focus-within:border-transparent'} shadow-sm p-2 sm:p-4 transition-all duration-200`}>
+    <div className={`relative w-full bg-white dark:bg-gray-800 rounded-2xl border ${disabled || isConversationMode ? 'border-gray-200 dark:border-gray-700' : 'border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-indigo-500 dark:focus-within:ring-indigo-400 focus-within:border-transparent'} shadow-sm p-2 sm:p-4 transition-all duration-200`}>
       <div className="flex items-start space-x-2 sm:space-x-4">
         <textarea
           ref={textareaRef}
@@ -146,18 +239,19 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={
-            disabled ? "Waiting for response..." 
+            disabled ? "Waiting for response..."
+            : isConversationMode ? "Listening... start speaking to the AI"
             : isListening ? "Listening..."
             : selectedTool ? `Ask me to use ${selectedTool}...`
             : "Welcome to Dr's lab"
           }
           className="flex-1 bg-transparent focus:outline-none resize-none text-base sm:text-lg placeholder-gray-500 dark:placeholder-gray-400 dark:text-white w-full"
           rows={1}
-          disabled={disabled}
+          disabled={disabled || isConversationMode}
         />
         <button
           onClick={handleSend}
-          disabled={!prompt.trim() || disabled}
+          disabled={!prompt.trim() || disabled || isConversationMode}
           className="bg-gray-800 dark:bg-indigo-600 text-white rounded-full w-9 h-9 flex items-center justify-center disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex-shrink-0"
           aria-label="Send message"
         >
@@ -168,7 +262,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
         <button 
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" 
           aria-label="Add attachment" 
-          disabled={disabled}
+          disabled={disabled || isConversationMode}
           title="Attach a file"
         >
           <PlusIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -202,7 +296,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
             onClick={() => setIsToolMenuOpen(prev => !prev)}
             className="flex items-center space-x-1.5 py-2 px-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" 
             aria-label="Use tools" 
-            disabled={disabled}
+            disabled={disabled || isConversationMode}
             title="Select a tool to use"
           >
             <ToolsIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -210,17 +304,15 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
           </button>
         </div>
         
-        {isMicSupported && (
-            <button
-                onClick={handleMicClick}
-                disabled={disabled}
-                className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 relative ${isListening ? 'animate-pulse' : ''}`}
-                aria-label={isListening ? 'Stop listening' : 'Use microphone'}
-                title={isListening ? 'Stop listening' : 'Use microphone'}
-            >
-                <MicrophoneIcon className={`w-5 h-5 ${isListening ? 'text-red-500' : 'text-gray-600 dark:text-gray-400'}`} />
-            </button>
-        )}
+        <button
+            onClick={handleMicClick}
+            disabled={disabled || isConversationMode || !isMicSupported}
+            className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 relative disabled:opacity-50 disabled:cursor-not-allowed ${isListening && !isProcessingSpeech ? 'animate-pulse' : ''}`}
+            aria-label={isListening ? 'Stop listening' : 'Use microphone'}
+            title={micError || (isListening ? 'Stop listening' : 'Use microphone')}
+        >
+            <MicrophoneIcon className={`w-5 h-5 ${!isMicSupported ? 'text-gray-400 dark:text-gray-600' : (isListening || (isConversationMode && !isProcessingSpeech)) ? 'text-red-500' : 'text-gray-600 dark:text-gray-400'}`} />
+        </button>
 
         {selectedTool && (
           <div className="flex items-center bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300 text-sm font-medium px-3 py-1.5 rounded-lg my-1">
@@ -236,6 +328,9 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
           </div>
         )}
       </div>
+      {micError && (
+          <p className="text-xs text-red-500 mt-2 px-2 text-center sm:text-left">{micError}</p>
+      )}
     </div>
   );
 };

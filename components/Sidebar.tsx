@@ -1,5 +1,5 @@
 import React from 'react';
-import { NewChatIcon, SettingsIcon, SunIcon, MoonIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from './icons';
+import { NewChatIcon, SettingsIcon, SunIcon, MoonIcon, SpeakerWaveIcon, SpeakerXMarkIcon, ConversationIcon } from './icons';
 
 interface SidebarProps {
   onNewChat: () => void;
@@ -9,9 +9,14 @@ interface SidebarProps {
   toggleTheme: () => void;
   responseMode: 'text' | 'voice';
   toggleResponseMode: () => void;
+  isConversationMode: boolean;
+  toggleConversationMode: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onNewChat, model, onModelChange, theme, toggleTheme, responseMode, toggleResponseMode }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+    onNewChat, model, onModelChange, theme, toggleTheme, responseMode, 
+    toggleResponseMode, isConversationMode, toggleConversationMode 
+}) => {
   return (
     <aside className="hidden md:flex w-64 h-screen bg-slate-50 dark:bg-slate-900 flex-col justify-between p-4 border-r border-gray-200 dark:border-gray-700">
       <div>
@@ -27,8 +32,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onNewChat, model, onModelChange, them
             aria-label="Select AI Model"
           >
             <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-            <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro</option>
-            <option value="gemini-1.0-pro">Gemini 1.0 Pro</option>
           </select>
         </div>
 
@@ -44,6 +47,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onNewChat, model, onModelChange, them
       </div>
       
       <div className="space-y-2">
+         <button
+          onClick={toggleConversationMode}
+          className={`w-full flex items-center p-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-700 dark:text-gray-300 ${isConversationMode ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'hover:bg-gray-200 dark:hover:bg-gray-800'}`}
+          aria-label="Toggle conversation mode"
+          title={isConversationMode ? "Exit conversation mode" : "Start conversation mode"}
+        >
+          <ConversationIcon className={`w-5 h-5 mr-3 ${isConversationMode ? 'text-indigo-600 dark:text-indigo-400' : ''}`} />
+          <span className="font-medium">Conversation Mode</span>
+        </button>
         <button
           onClick={toggleResponseMode}
           className="w-full flex items-center p-3 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-700 dark:text-gray-300"
