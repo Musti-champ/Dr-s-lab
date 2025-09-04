@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
@@ -50,6 +49,7 @@ const MainContent: React.FC<MainContentProps> = ({ messages, isLoading, onSend, 
                 isUser={msg.isUser}
                 imageUrl={msg.imageUrl}
                 theme={theme}
+                isStudio={msg.isStudio}
               />
             ))}
              {isLoading && <ChatMessage message="" isUser={false} isLoading={true} theme={theme} />}

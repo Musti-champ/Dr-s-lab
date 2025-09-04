@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { prism, oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { SparkleIcon, UserIcon, CopyIcon, CheckIcon } from './icons';
-import CodeBlockHeader from './CodeBlockHeader';
+import { CodeBlock } from './CodeBlock';
+import { StudioMessage } from './StudioMessage';
 
 interface ChatMessageProps {
   message: string;
@@ -12,53 +11,15 @@ interface ChatMessageProps {
   isLoading?: boolean;
   imageUrl?: string;
   theme: string;
+  isStudio?: boolean;
 }
 
-const CodeBlock: React.FC<any> = ({ node, inline, className, children, theme, ...props }) => {
-  const match = /language-(\w+)/.exec(className || '');
-  const codeText = String(children).replace(/\n$/, '');
-  const language = match ? match[1] : undefined;
-
-  if (!inline) {
-    return (
-      <div className="relative group my-4 text-sm rounded-md border border-slate-300 dark:border-slate-700 overflow-hidden">
-        <CodeBlockHeader language={language} codeText={codeText} />
-        <div className="overflow-auto max-h-[400px]">
-          <SyntaxHighlighter
-            style={theme === 'dark' ? oneDark : prism}
-            language={language}
-            PreTag="div"
-            {...props}
-            customStyle={{
-              margin: 0,
-              padding: '1rem',
-              backgroundColor: theme === 'dark' ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.5)',
-            }}
-            codeTagProps={{
-                className: 'text-sm'
-            }}
-          >
-            {codeText}
-          </SyntaxHighlighter>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <code className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-1 rounded-md text-sm font-mono" {...props}>
-      {children}
-    </code>
-  );
-};
-
-
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, isLoading = false, imageUrl, theme }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, isLoading = false, imageUrl, theme, isStudio = false }) => {
   const [isCopied, setIsCopied] = useState(false);
   
   const containerStyles = isUser 
     ? 'bg-white dark:bg-gray-900' 
-    : 'bg-slate-50 dark:bg-gray-800';
+    : isStudio ? 'bg-transparent dark:bg-transparent' : 'bg-slate-50 dark:bg-gray-800';
     
   const avatarContainerStyles = 'bg-gray-100 dark:bg-gray-700';
   const avatarIconStyles = 'text-gray-600 dark:text-gray-300';
@@ -80,17 +41,20 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, isLoading = 
     </div>
   );
   
+  if (isStudio) {
+      return <StudioMessage content={message} theme={theme} />;
+  }
+
   // Logic to split Studio tool responses into code and explanation
-  const explanationMarker = '\n### Explanation';
-  const hasStudioResponse = !isUser && message.includes(explanationMarker);
-  
+  const explanationMarkerRegex = /^### Explanation$/im;
   let codeContent = message;
   let explanationContent = null;
+  
+  const match = message.match(explanationMarkerRegex);
 
-  if (hasStudioResponse) {
-    const parts = message.split(explanationMarker);
-    codeContent = parts[0].trim();
-    explanationContent = `### Explanation${parts.slice(1).join(explanationMarker)}`;
+  if (!isUser && match && match.index) {
+    codeContent = message.substring(0, match.index).trim();
+    explanationContent = message.substring(match.index).trim();
   }
 
   return (
@@ -108,7 +72,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, isLoading = 
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm]}
                 components={{
-                    code: (props) => <CodeBlock {...props} theme={theme} />,
+                    code: (props) => <CodeBlock {...props} theme={theme} children={props.children ?? ''} />,
                 }}
               >
                   {codeContent}
@@ -119,7 +83,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, isLoading = 
                       <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                            components={{
-                                code: (props) => <CodeBlock {...props} theme={theme} />,
+                                code: (props) => <CodeBlock {...props} theme={theme} children={props.children ?? ''} />,
                            }}
                       >
                           {explanationContent}
