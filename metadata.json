@@ -1,0 +1,7 @@
+{
+  "name": "Dr's Lab AI",
+  "description": "An intelligent chat interface to interact with the Dr's Lab AI model, featuring a clean and modern user experience.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
