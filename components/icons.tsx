@@ -264,3 +264,29 @@ export const MagnifyingGlassIcon = (props: React.SVGProps<SVGSVGElement>) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
     </svg>
 );
+
+export const CloudArrowUpIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={IconProps.strokeWidth} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+    </svg>
+);
+
+export const PuzzlePieceIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={IconProps.strokeWidth} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.75a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75h-.01a.75.75 0 01-.75-.75V6.75zM12.75 15.75a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75h-.01a.75.75 0 01-.75-.75v-.01z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h12A2.25 2.25 0 0120.25 6v12A2.25 2.25 0 0118 20.25H6A2.25 2.25 0 013.75 18V6zM15 6.75a.75.75 0 00-1.5 0v.01a.75.75 0 001.5 0V6.75zm-3 9a.75.75 0 00-1.5 0v.01a.75.75 0 001.5 0v-.01z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9.75a3 3 0 013 3v1.5a3 3 0 01-3 3h-1.5a3 3 0 01-3-3v-1.5a3 3 0 013-3H12z" />
+    </svg>
+);
+
+export const AppwriteIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg fill="currentColor" viewBox="0 0 24 24" {...props}>
+        <path d="M12.424 2.713l-9.33 4.28a.5.5 0 00-.265.442v10.322c0 .19.112.365.287.45l9.33 4.814a.5.5 0 00.45 0l9.33-4.814a.5.5 0 00.287-.45V7.435a.5.5 0 00-.265-.442l-9.33-4.28a.5.5 0 00-.498 0zM12 12.833l-4.837-2.222L12 8.333l4.837 2.278-4.837 2.222zm-5.337 4.16L12 19.222l5.337-2.222-5.337-2.482-5.337 2.482zM7.163 7.852l4.837 2.222L16.837 7.852 12 5.574l-4.837 2.278z"/>
+    </svg>
+);
+
+export const ArrowTrendingUpIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={IconProps.strokeWidth} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-3.94.886M21 8.75l.886-3.94" />
+    </svg>
+);

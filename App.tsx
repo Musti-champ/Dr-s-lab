@@ -116,7 +116,7 @@ const App: React.FC = () => {
                 const filesContent = studioContent.files.map((file: { path: string; content: string; }) => 
                     `--- File: ${file.path} ---\n${file.content}`
                 ).join('\n\n');
-                content = `[Studio Mode Project: ${studioContent.projectName}]\n\n${filesContent}\n\n--- Explanation ---\n${studioContent.explanation}\n\n--- Terminal Output ---\n${studioContent.terminalOutput}`;
+                content = `[Studio Mode Project: ${studioContent.projectName}]\n\n${filesContent}\n\n--- Explanation ---\n${studioContent.explanation}\n\n--- Next Steps ---\n${studioContent.nextSteps}\n\n--- Terminal Output ---\n${studioContent.terminalOutput}`;
             } catch {
                 content = "[Studio Mode response - unformatted]";
             }
@@ -195,7 +195,7 @@ const App: React.FC = () => {
         let response;
 
         if (isStudioMode) {
-            systemInstruction += `\n\n**Studio Mode Instructions:**\nYou are an expert IDE agent. Your response MUST be a single JSON object and nothing else. The JSON object must conform to this structure:\n- "projectName": A string for the project's name (e.g., "my-react-app").\n- "files": An array of file objects. Each object must have:\n  - "path": The full path of the file (e.g., "src/components/Button.js").\n  - "language": The programming language identifier (e.g., "javascript").\n  - "content": The complete code for that file as a string.\n- "explanation": A detailed breakdown of the project, its structure, and how the code works.\n- "terminalOutput": A simulated output from running a command like 'npm start' or 'npm run build'.`;
+            systemInstruction += `\n\n**Studio Mode Instructions:**\nYou are an expert IDE agent. Your response MUST be a single JSON object and nothing else. The JSON object must conform to this structure:\n- "projectName": A string for the project's name (e.g., "my-react-app").\n- "files": An array of file objects. Each object must have:\n  - "path": The full path of the file (e.g., "src/components/Button.js").\n  - "language": The programming language identifier (e.g., "javascript").\n  - "content": The complete code for that file as a string.\n- "explanation": A detailed breakdown of the project, its structure, and how the code works.\n- "terminalOutput": A simulated output from running a command like 'npm start' or 'npm run build'.\n- "nextSteps": A markdown-formatted string with a list of suggested next steps. Explain what to do next to continue building the project and how following these steps will lead to a successful outcome.`;
             
             response = await ai.models.generateContent({
                 model: model,
@@ -220,9 +220,10 @@ const App: React.FC = () => {
                                 }
                             },
                             explanation: { type: Type.STRING },
-                            terminalOutput: { type: Type.STRING }
+                            terminalOutput: { type: Type.STRING },
+                            nextSteps: { type: Type.STRING }
                         },
-                        required: ["projectName", "files", "explanation", "terminalOutput"],
+                        required: ["projectName", "files", "explanation", "terminalOutput", "nextSteps"],
                     }
                 },
             });
